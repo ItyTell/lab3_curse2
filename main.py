@@ -9,6 +9,7 @@ import Voronoi
 import Djarvis
 import Grehem
 import Recursive
+from scipy.spatial import Delaunay
 
 pygame.font.init()
 
@@ -53,7 +54,17 @@ def voronoi():
 
 
 def delone():
-    pass
+    Segment.segments.clear()
+    if len(Edge.edges) < 2:
+        return
+    delon = Delaunay(Edge.edges)
+    triangles = delon.simplices
+    for triangle in triangles:
+        Segment((Edge.edges[triangle[0]][0], Edge.edges[triangle[0]][1], Edge.edges[triangle[1]][0], Edge.edges[triangle[1]][1]))
+        Segment((Edge.edges[triangle[2]][0], Edge.edges[triangle[2]][1], Edge.edges[triangle[1]][0],
+                 Edge.edges[triangle[1]][1]))
+        Segment((Edge.edges[triangle[0]][0], Edge.edges[triangle[0]][1], Edge.edges[triangle[2]][0],
+                 Edge.edges[triangle[2]][1]))
 
 
 def renew_segments(result):
