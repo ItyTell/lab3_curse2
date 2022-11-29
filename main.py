@@ -17,148 +17,156 @@ pygame.font.init()
 
 my_font = pygame.font.SysFont('Comic Sans MS', 25)
 buttons = []
-texts = ['Clear all', 'Clear edges', 'Clear segments', 'Add edges', 'Forchun', 'Delone', 'Djarvis', 'Grehem', 'Recursive', '', '', '', '', '', '']
+texts = ['Clear all', 'Clear edges', 'Clear segments', 'Add edges', 'Forchun', 'Delone', 'Djarvis', 'Grehem',
+         'Recursive', '', '', '', '', '', '']
 for text in texts:
     buttons.append(my_font.render(text, False, (0, 0, 0)))
 
 
-def new_edge(cords):
-    cords = np.array(cords)
+class Game:
 
-    for edge1 in Edge.edges:
-        if edge1.distance(cords) <= 18:
+    def __init__(self):
+        self.settings = {}
+        self.edges = []
+        self.segments = []
+        self.upload_settings()
+        self.screen = pygame.display.set_mode((self.settings["screen"]["width"], self.settings["screen"]["heights"]))
+        pygame.display.set_caption('Lab 3')
+        self.clock = pygame.time.Clock()
+        self.fps = 60
+        self.functions = [self.clear, self.edges.clear, self.segments.clear, self.add_points, self.voronoi, self.delone,
+                          self.djarvis, self.grehem, self.recursive]
+
+    def upload_settings(self):
+        with open('settings.json') as file:
+            file_content = file.read()
+            self.settings = json.loads(file_content)
+        file.close()
+
+    def new_edge(self, cords):
+        cords = np.array(cords)
+
+        for edge1 in self.edges:
+            if edge1.distance(cords) <= 18:
+                return
+
+        if cords[0] < 15 or cords[0] > 1110 or cords[1] < 15 or cords[1] > 700:
+            return
+        self.edges.append(Edge(cords))
+
+    def clear(self):
+        self.edges.clear()
+        self.segments.clear()
+
+    def add_points(self):
+        for i in range(10):
+            self.new_edge((int(1110 * random.random()), int(700 * random.random())))
+
+    def voronoi(self):
+        if len(Edge.edges) < 2:
+            return
+        diagram = Voronoi.Voronoi(Edge.edges)
+        diagram.process()
+        lines = diagram.get_output()
+        for line in lines:
+            self.segments.append(Segment(line))
+
+    def delone(self):
+        if len(Edge.edges) < 2:
             return
 
-    if cords[0] < 15 or cords[0] > 1110 or cords[1] < 15 or cords[1] > 700:
-        return
-    Edge(cords)
+        triangulation = Delaunay(self.edges)
+        triangles = triangulation.simplices
 
+        for triangle in triangles:
+            self.segments.append(
+                Segment((self.edges[triangle[0]][0], self.edges[triangle[0]][1], self.edges[triangle[1]][0],
+                         self.edges[triangle[1]][1])))
+            self.segments.append(
+                Segment((self.edges[triangle[2]][0], self.edges[triangle[2]][1], self.edges[triangle[1]][0],
+                         self.edges[triangle[1]][1])))
+            self.segments.append(
+                Segment((self.edges[triangle[0]][0], self.edges[triangle[0]][1], self.edges[triangle[2]][0],
+                         self.edges[triangle[2]][1])))
 
-def clear():
-    Edge.edges.clear()
-    Segment.segments.clear()
+    def renew_segments(self, result):
+        for i in range(len(result) - 1):
+            self.segments.append(Segment((result[i][0], result[i][1], result[i + 1][0], result[i + 1][1])))
 
+    def djarvis(self):
+        if len(Edge.edges) < 2:
+            return
+        result = Djarvis.djarvis(Edge.edges)
+        self.renew_segments(result)
 
-def add_points():
-    for i in range(10):
-        new_edge((int(1110 * random.random()), int(700 * random.random())))
+    def grehem(self):
+        if len(Edge.edges) < 2:
+            return
+        result = Grehem.grehem(Edge.edges)
+        self.renew_segments(result)
 
+    def recursive(self):
+        if len(Edge.edges) < 2:
+            return
+        result = Recursive.recursive(Edge.edges)
+        self.renew_segments(result)
 
-def voronoi():
-    if len(Edge.edges) < 2:
-        return
-    diagram = Voronoi.Voronoi(Edge.edges)
-    diagram.process()
-    lines = diagram.get_output()
-    for line in lines:
-        Segment(line)
+    def update_segments(self):
+        for segment in self.segments:
+            pygame.draw.line(self.screen, colors[self.settings["segment"]["color"]], segment.x, segment.y, width=4)
 
+    def update_edges(self):
 
-def delone():
-    if len(Edge.edges) < 2:
-        return
+        for edge in self.edges:
+            pygame.draw.circle(surface=self.screen, color=colors[self.settings["edge"]["color"]], center=edge.cords,
+                               radius=8, width=0)
 
-    triangulation = Delaunay(Edge.edges)
-    triangles = triangulation.simplices
+    def update_frames(self):
 
-    for triangle in triangles:
-        Segment((Edge.edges[triangle[0]][0], Edge.edges[triangle[0]][1], Edge.edges[triangle[1]][0],
-                 Edge.edges[triangle[1]][1]))
-        Segment((Edge.edges[triangle[2]][0], Edge.edges[triangle[2]][1], Edge.edges[triangle[1]][0],
-                 Edge.edges[triangle[1]][1]))
-        Segment((Edge.edges[triangle[0]][0], Edge.edges[triangle[0]][1], Edge.edges[triangle[2]][0],
-                 Edge.edges[triangle[2]][1]))
+        pygame.draw.rect(self.screen, colors['white'], (self.settings["screen"]["width"] - 150, 3,
+                                                        self.settings["screen"]["width"],
+                                                        self.settings["screen"]["heights"]))
 
+        pygame.draw.rect(self.screen, colors['black'], (self.settings["screen"]["width"] - 150, 3, 148,
+                                                        self.settings["screen"]["heights"] - 3), width=6)
 
-def renew_segments(result):
-    for i in range(len(result) - 1):
-        Segment((result[i][0], result[i][1], result[i + 1][0], result[i + 1][1]))
+        pygame.draw.rect(self.screen, colors['black'], (3, 3, self.settings["screen"]["width"] - 6,
+                                                        self.settings["screen"]["heights"] - 6), width=6)
 
+    def update_buttons(self):
+        for i, button in enumerate(buttons):
+            self.screen.blit(button, (self.settings["screen"]["width"] - 140, 40 * i + 6))
+            pygame.draw.rect(self.screen, colors['black'], (self.settings["screen"]["width"] - 150, 40 * i,
+                                                            self.settings["screen"]["width"] - 6, 40), width=2)
 
-def djarvis():
-    if len(Edge.edges) < 2:
-        return
-    result = Djarvis.djarvis(Edge.edges)
-    renew_segments(result)
+    def update(self):
+        self.screen.fill(colors[self.settings["screen"]["color"]])
 
+        self.update_segments()
+        self.update_edges()
+        self.update_frames()
+        self.update_buttons()
 
-def grehem():
-    if len(Edge.edges) < 2:
-        return
-    result = Grehem.grehem(Edge.edges)
-    renew_segments(result)
+        pygame.display.update()
 
+    def start(self):
 
-def recursive():
-    if len(Edge.edges) < 2:
-        return
-    result = Recursive.recursive(Edge.edges)
-    renew_segments(result)
+        self.update()
 
-
-def update_segments(screen, segment_color):
-    for segment in Segment.segments:
-        pygame.draw.line(screen, segment_color, segment.x, segment.y, width=4)
-
-
-def update_edges(screen, edge_color):
-    for edge in Edge.edges:
-        pygame.draw.circle(surface=screen, color=edge_color, center=edge.cords, radius=8, width=0)
-
-
-def update_frames(screen, width, heights):
-    pygame.draw.rect(screen, colors['white'], (width - 150, 3, width, heights))
-    pygame.draw.rect(screen, colors['black'], (width - 150, 3, 148, heights - 3), width=6)
-    pygame.draw.rect(screen, colors['black'], (3, 3, width - 6, heights - 6), width=6)
-
-
-def update_buttons(screen, width, heights):
-    for i, button in enumerate(buttons):
-        screen.blit(button, (width - 140, 40 * i + 6))
-        pygame.draw.rect(screen, colors['black'], (width - 150, 40 * i, width - 6, 40), width=2)
-
-
-def update(screen, settings):
-    screen.fill(colors[settings["screen"]["color"]])
-
-    update_segments(screen, segment_color=colors[settings["segment"]["color"]])
-    update_edges(screen, edge_color=colors[settings["edge"]["color"]])
-    update_frames(screen, width=settings["screen"]["width"], heights=settings["screen"]["heights"])
-    update_buttons(screen, width=settings["screen"]["width"], heights=settings["screen"]["heights"])
-
-    pygame.display.update()
-
-
-def begin():
-
-    with open('settings.json') as file:
-        file_content = file.read()
-        settings = json.loads(file_content)
-
-    file.close()
-
-    screen = pygame.display.set_mode((settings["screen"]["width"], settings["screen"]["heights"]))
-    pygame.display.set_caption('Lab 3')
-    clock = pygame.time.Clock()
-    fps = 60
-
-    update(screen, settings)
-
-    functions = [clear, Edge.edges.clear, Segment.segments.clear, add_points, voronoi, delone, djarvis, grehem, recursive]
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if pygame.mouse.get_pressed()[0]:
-                    if event.pos[0] < settings["screen"]["width"] - 150:
-                        new_edge(event.pos)
-                    else:
-                        functions[event.pos[1] // 40]()
-                    update(screen, settings)
-        clock.tick(fps)
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if pygame.mouse.get_pressed()[0]:
+                        if event.pos[0] < self.settings["screen"]["width"] - 150:
+                            self.new_edge(event.pos)
+                        else:
+                            self.functions[event.pos[1] // 40]()
+                        self.update()
+            self.clock.tick(self.fps)
 
 
 if __name__ == '__main__':
-    begin()
+    game = Game()
+    game.start()
