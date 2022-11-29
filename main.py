@@ -1,21 +1,23 @@
-import random
+import json
 import pygame
 import pygame.freetype
+import random
+
 import numpy as np
-import json
-from colors import colors
-from Edge import Edge, Segment
-import Voronoi
+from scipy.spatial import Delaunay
+
 import Djarvis
 import Grehem
 import Recursive
-from scipy.spatial import Delaunay
+import Voronoi
+from Edge import Edge, Segment
+from colors import colors
 
 pygame.font.init()
 
 my_font = pygame.font.SysFont('Comic Sans MS', 25)
 buttons = []
-texts = ['Clear', 'Add edges', 'Forchun', 'Delone', 'Djarvis', 'Grehem', 'Recursive']
+texts = ['Clear all', 'Clear edges', 'Clear segments', 'Add edges', 'Forchun', 'Delone', 'Djarvis', 'Grehem', 'Recursive', '', '', '', '', '', '']
 for text in texts:
     buttons.append(my_font.render(text, False, (0, 0, 0)))
 
@@ -48,19 +50,20 @@ def voronoi():
     diagram = Voronoi.Voronoi(Edge.edges)
     diagram.process()
     lines = diagram.get_output()
-    Segment.segments.clear()
     for line in lines:
         Segment(line)
 
 
 def delone():
-    Segment.segments.clear()
     if len(Edge.edges) < 2:
         return
-    delon = Delaunay(Edge.edges)
-    triangles = delon.simplices
+
+    triangulation = Delaunay(Edge.edges)
+    triangles = triangulation.simplices
+
     for triangle in triangles:
-        Segment((Edge.edges[triangle[0]][0], Edge.edges[triangle[0]][1], Edge.edges[triangle[1]][0], Edge.edges[triangle[1]][1]))
+        Segment((Edge.edges[triangle[0]][0], Edge.edges[triangle[0]][1], Edge.edges[triangle[1]][0],
+                 Edge.edges[triangle[1]][1]))
         Segment((Edge.edges[triangle[2]][0], Edge.edges[triangle[2]][1], Edge.edges[triangle[1]][0],
                  Edge.edges[triangle[1]][1]))
         Segment((Edge.edges[triangle[0]][0], Edge.edges[triangle[0]][1], Edge.edges[triangle[2]][0],
@@ -68,7 +71,6 @@ def delone():
 
 
 def renew_segments(result):
-    Segment.segments.clear()
     for i in range(len(result) - 1):
         Segment((result[i][0], result[i][1], result[i + 1][0], result[i + 1][1]))
 
@@ -112,7 +114,7 @@ def update_frames(screen, width, heights):
 
 def update_buttons(screen, width, heights):
     for i, button in enumerate(buttons):
-        screen.blit(button, (width - 135, 40 * i + 6))
+        screen.blit(button, (width - 140, 40 * i + 6))
         pygame.draw.rect(screen, colors['black'], (width - 150, 40 * i, width - 6, 40), width=2)
 
 
@@ -133,6 +135,8 @@ def begin():
         file_content = file.read()
         settings = json.loads(file_content)
 
+    file.close()
+
     screen = pygame.display.set_mode((settings["screen"]["width"], settings["screen"]["heights"]))
     pygame.display.set_caption('Lab 3')
     clock = pygame.time.Clock()
@@ -140,7 +144,7 @@ def begin():
 
     update(screen, settings)
 
-    functions = [clear, add_points, voronoi, delone, djarvis, grehem, recursive]
+    functions = [clear, Edge.edges.clear, Segment.segments.clear, add_points, voronoi, delone, djarvis, grehem, recursive]
 
     while True:
         for event in pygame.event.get():
