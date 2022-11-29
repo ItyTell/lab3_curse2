@@ -1,9 +1,12 @@
 import json
+import math
+
 import pygame
 import pygame.freetype
 import random
 
 import numpy as np
+import scipy.constants
 from scipy.spatial import Delaunay
 
 import Djarvis
@@ -15,13 +18,6 @@ from colors import colors
 
 pygame.font.init()
 
-my_font = pygame.font.SysFont('Comic Sans MS', 25)
-buttons = []
-texts = ['Clear all', 'Clear edges', 'Clear segments', 'Add edges', 'Forchun', 'Delone', 'Djarvis', 'Grehem',
-         'Recursive', '', '', '', '', '', '']
-for text in texts:
-    buttons.append(my_font.render(text, False, (0, 0, 0)))
-
 
 class Game:
 
@@ -31,19 +27,32 @@ class Game:
         self.segments_voronoi = []
         self.segments_delone = []
         self.segments_lin = []
+        self.buttons = []
+
         self.upload_settings()
+        self.upload_buttons()
         self.screen = pygame.display.set_mode((self.settings["screen"]["width"], self.settings["screen"]["heights"]))
         pygame.display.set_caption('Lab 3')
         self.clock = pygame.time.Clock()
         self.fps = 60
         self.functions = [self.clear, self.edges.clear, self.clear_segments, self.add_points, self.voronoi, self.delone,
-                          self.djarvis, self.grehem, self.recursive]
+                          self.djarvis, self.grehem, self.recursive, self.movement]
+        self.is_moving = False
+        self.speed = 2
+        self.angels = []
 
     def upload_settings(self):
         with open('settings.json') as file:
             file_content = file.read()
             self.settings = json.loads(file_content)
         file.close()
+
+    def upload_buttons(self):
+        my_font = pygame.font.SysFont('Comic Sans MS', 25)
+        texts = ['Clear all', 'Clear edges', 'Clear segments', 'Add edges', 'Forchun', 'Delone', 'Djarvis', 'Grehem',
+                 'Recursive', 'Move', '', '', '', '', '']
+        for text in texts:
+            self.buttons.append(my_font.render(text, False, (0, 0, 0)))
 
     def new_edge(self, cords):
         cords = np.array(cords)
@@ -70,6 +79,8 @@ class Game:
             self.new_edge((int(1110 * random.random()), int(700 * random.random())))
 
     def voronoi(self):
+
+        self.segments_voronoi.clear()
         if len(self.edges) < 2:
             return
         diagram = Voronoi.Voronoi(self.edges)
@@ -79,6 +90,8 @@ class Game:
             self.segments_voronoi.append(Segment(line))
 
     def delone(self):
+
+        self.segments_delone.clear()
         if len(self.edges) < 2:
             return
 
@@ -97,6 +110,7 @@ class Game:
                          self.edges[triangle[2]][1])))
 
     def renew_segments(self, result):
+        self.segments_lin.clear()
         for i in range(len(result) - 1):
             self.segments_lin.append(Segment((result[i][0], result[i][1], result[i + 1][0], result[i + 1][1])))
 
@@ -120,10 +134,12 @@ class Game:
 
     def update_segments(self):
         for segment in self.segments_voronoi:
-            pygame.draw.line(self.screen, colors[self.settings["segment"]["voronoi_color"]], segment.x, segment.y, width=4)
+            pygame.draw.line(self.screen, colors[self.settings["segment"]["voronoi_color"]],
+                             segment.x, segment.y, width=4)
 
         for segment in self.segments_delone:
-            pygame.draw.line(self.screen, colors[self.settings["segment"]["triangulation_color"]], segment.x, segment.y, width=4)
+            pygame.draw.line(self.screen, colors[self.settings["segment"]["triangulation_color"]],
+                             segment.x, segment.y, width=4)
 
         for segment in self.segments_lin:
             pygame.draw.line(self.screen, colors[self.settings["segment"]["lin_color"]], segment.x, segment.y, width=4)
@@ -131,8 +147,8 @@ class Game:
     def update_edges(self):
 
         for edge in self.edges:
-            pygame.draw.circle(surface=self.screen, color=colors[self.settings["edge"]["color"]], center=edge.cords,
-                               radius=8, width=0)
+            pygame.draw.circle(surface=self.screen, color=colors[self.settings["edge"]["color"]],
+                               center=(int(edge.cords[0]), int(edge.cords[1])), radius=8, width=0)
 
     def update_frames(self):
 
@@ -147,7 +163,7 @@ class Game:
                                                         self.settings["screen"]["heights"] - 6), width=6)
 
     def update_buttons(self):
-        for i, button in enumerate(buttons):
+        for i, button in enumerate(self.buttons):
             self.screen.blit(button, (self.settings["screen"]["width"] - 140, 40 * i + 6))
             pygame.draw.rect(self.screen, colors['black'], (self.settings["screen"]["width"] - 150, 40 * i,
                                                             self.settings["screen"]["width"] - 6, 40), width=2)
@@ -161,6 +177,37 @@ class Game:
         self.update_buttons()
 
         pygame.display.update()
+
+    def move(self):
+        self.is_moving = True
+        for i in range(len(self.edges)):
+            self.angels.append(random.random() * 2 * scipy.constants.pi)
+
+    def stop_moving(self):
+        self.is_moving = False
+        self.angels.clear()
+
+    def movement(self):
+        if self.is_moving:
+            self.stop_moving()
+        else:
+            self.move()
+
+    def moving(self):
+        for i in range(len(self.edges)):
+            if self.edges[i].cords[0] < 15 or self.edges[i].cords[0] > 1110:
+                self.angels[i] += scipy.constants.pi
+                self.edges[i].cords[0] -= 4 * (self.edges[i].cords[0] - 15) / abs(self.edges[i].cords[0] - 15)
+            if self.edges[i].cords[1] < 15 or self.edges[i].cords[1] > 700:
+                self.angels[i] = scipy.constants.pi - self.angels[i]
+                self.edges[i].cords[1] -= 4 * (self.edges[i].cords[1] - 15) / abs(self.edges[i].cords[1] - 15)
+
+            v_y = math.cos(self.angels[i]) * self.speed
+            v_x = math.sin(self.angels[i]) * self.speed
+            self.edges[i].cords[0] += v_x
+            self.edges[i].cords[1] += v_y
+
+        self.update()
 
     def start(self):
 
@@ -177,6 +224,8 @@ class Game:
                         else:
                             self.functions[event.pos[1] // 40]()
                         self.update()
+            if self.is_moving:
+                self.moving()
             self.clock.tick(self.fps)
 
 
