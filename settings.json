@@ -1,0 +1,13 @@
+{
+  "screen": {
+    "color": "white",
+    "width": 1280,
+    "heights": 720
+  },
+  "edge": {
+    "color": "red2"
+          },
+  "segment": {
+    "color": "blue"
+  }
+}
