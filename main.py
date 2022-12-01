@@ -42,7 +42,7 @@ class Game:
         self.angels = []
 
         self.distance = 3
-        self.rad_edges = 8
+        self.rad_edges = 10
         self.menu_width = 150
 
     def upload_settings(self):
@@ -220,22 +220,26 @@ class Game:
             self.angels[i] = 2 * scipy.constants.pi - self.angels[i]
 
     def collisions_edges(self, i):
-        for edge1 in self.edges:
-            if 0.1 < edge1.distance(self.edges[i].cords) <= 2 * self.rad_edges:
-                alfa = ((edge1[0] - self.edges[i][0]) /
-                        ((edge1[0] - self.edges[i][0]) ** 2 + (edge1[1] - self.edges[i][1]) ** 2) ** (
+        for j in range(i + 1, len(self.edges)):
+            if self.edges[j].distance(self.edges[i].cords) <= 2 * self.rad_edges:
+                self.angels[i], self.angels[j] = self.angels[j] * 1.1, self.angels[i] * 1.1
+
+                """alfa = ((self.edges[j][0] - self.edges[i][0]) /
+                        ((self.edges[j][0] - self.edges[i][0]) ** 2 + (self.edges[j][1] - self.edges[i][1]) ** 2) ** (
                                 1 / 2))
-                alfa = alfa if (edge1[0] - self.edges[i][0]) * (edge1[1] - self.edges[i][1]) > 0 else -alfa
+                alfa = alfa if (self.edges[j][0] - self.edges[i][0]) * \
+                               (self.edges[j][1] - self.edges[i][1]) > 0 else -alfa
                 alfa = math.asin(alfa)
                 alfa += scipy.constants.pi / 2
-                self.angels[i] = 2 * alfa - self.angels[i]
+                alfa = 180 - alfa if self.edges[i][0] > self.edges[j][0] else alfa
+                self.angels[i] = 2 * alfa - self.angels[i]"""
 
     def collisions(self):
         for i in range(len(self.edges)):
             v_x = math.cos(self.angels[i]) * self.speed
             v_y = math.sin(self.angels[i]) * self.speed
             self.collisions_border(i, v_x, v_y)
-            #self.collisions_edges(i)
+            self.collisions_edges(i)
 
     def moving(self):
 
