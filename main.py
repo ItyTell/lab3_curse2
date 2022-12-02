@@ -19,6 +19,14 @@ from colors import colors
 pygame.font.init()
 
 
+def engels_norm(alfa):
+    while alfa > math.pi / 2:
+        alfa -= 2 * math.pi
+    while alfa < -math.pi / 2:
+        alfa += 2 * math.pi
+    return alfa
+
+
 class Game:
 
     def __init__(self):
@@ -31,18 +39,21 @@ class Game:
 
         self.upload_settings()
         self.upload_buttons()
+
         self.screen = pygame.display.set_mode((self.settings["screen"]["width"], self.settings["screen"]["heights"]))
+        self.screen.fill(colors[self.settings["screen"]["color"]])
+
         pygame.display.set_caption('Lab 3')
         self.clock = pygame.time.Clock()
         self.fps = 60
         self.functions = [self.clear, self.edges.clear, self.clear_segments, self.add_points, self.voronoi, self.delone,
                           self.djarvis, self.grehem, self.recursive, self.movement]
         self.is_moving = False
-        self.speed = 4
+        self.speed = 10
         self.angels = []
 
-        self.distance = 3
-        self.rad_edges = 10
+        self.distance = 5
+        self.rad_edges = 30
         self.menu_width = 150
 
     def upload_settings(self):
@@ -58,18 +69,26 @@ class Game:
         for text in texts:
             self.buttons.append(my_font.render(text, False, (0, 0, 0)))
 
-    def new_edge(self, cords):
+    def check_edge(self, cords):
         cords = np.array(cords)
 
         for edge1 in self.edges:
             if edge1.distance(cords) < 2 * self.rad_edges:
-                return
+                return True
 
         if cords[0] < self.rad_edges + self.distance or \
                 cords[0] > self.settings["screen"]["width"] - self.menu_width - self.distance - self.rad_edges or \
                 cords[1] < self.rad_edges + self.distance or \
                 cords[1] > self.settings["screen"]["heights"] - self.rad_edges - + self.distance:
+            return True
+
+        return False
+
+    def new_edge(self, cords):
+
+        if self.check_edge(cords):
             return
+
         self.edges.append(Edge(cords))
 
         if self.is_moving:
@@ -183,7 +202,9 @@ class Game:
                                                             self.settings["screen"]["width"] - 6, 40), width=2)
 
     def update(self):
-        self.screen.fill(colors[self.settings["screen"]["color"]])
+
+        if self.is_moving:
+            self.screen.fill(colors[self.settings["screen"]["color"]])
 
         self.update_segments()
         self.update_edges()
@@ -216,30 +237,54 @@ class Game:
 
         if self.edges[i][1] + v_y < self.rad_edges + self.distance:
             self.angels[i] = 4 * scipy.constants.pi - self.angels[i]
-        elif self.edges[i][1] + v_y > self.settings["screen"]["heights"] - self.rad_edges - + self.distance:
+        elif self.edges[i][1] + v_y > self.settings["screen"]["heights"] - self.rad_edges - self.distance:
             self.angels[i] = 2 * scipy.constants.pi - self.angels[i]
 
-    def collisions_edges(self, i):
-        for j in range(i + 1, len(self.edges)):
-            if self.edges[j].distance(self.edges[i].cords) <= 2 * self.rad_edges:
-                self.angels[i], self.angels[j] = self.angels[j] * 1.1, self.angels[i] * 1.1
+    def collisions_edges(self):
+        for i in range(len(self.edges)):
+            for j in range(i + 1, len(self.edges)):
+                if i == j:
+                    pass
+                if self.edges[i].distance(self.edges[j]) <= 2 * self.rad_edges:
+                    v_x = math.cos(self.angels[i]) * self.speed
+                    v_y = math.sin(self.angels[i]) * self.speed
+                    edge_1 = Edge([self.edges[i].cords[0] + v_x, self.edges[i].cords[1] + v_y])
 
-                """alfa = ((self.edges[j][0] - self.edges[i][0]) /
-                        ((self.edges[j][0] - self.edges[i][0]) ** 2 + (self.edges[j][1] - self.edges[i][1]) ** 2) ** (
-                                1 / 2))
-                alfa = alfa if (self.edges[j][0] - self.edges[i][0]) * \
-                               (self.edges[j][1] - self.edges[i][1]) > 0 else -alfa
-                alfa = math.asin(alfa)
-                alfa += scipy.constants.pi / 2
-                alfa = 180 - alfa if self.edges[i][0] > self.edges[j][0] else alfa
-                self.angels[i] = 2 * alfa - self.angels[i]"""
+                    v_x = math.cos(self.angels[j]) * self.speed
+                    v_y = math.sin(self.angels[j]) * self.speed
+                    edge_2 = Edge([self.edges[j].cords[0] + v_x, self.edges[j].cords[1] + v_y])
+
+                    if edge_1.distance(edge_2) < self.edges[i].distance(self.edges[j]):
+                        alfa = math.atan((self.edges[j][1] - self.edges[i][1])/(self.edges[j][0] - self.edges[i][0]))
+
+                        if self.edges[j][0] - self.edges[i][0] < 0:
+                            alfa += math.pi
+                            alfa = engels_norm(alfa)
+
+                        w1 = self.angels[i] - alfa
+                        w2 = self.angels[j] - alfa
+                        Vwt1 = self.speed * math.sin(w1)
+                        Vwt2 = self.speed * math.sin(w2)
+                        Vw1 = self.speed * math.cos(w2)
+                        Vw2 = self.speed * math.cos(w1)
+                        W1 = math.atan(Vwt1/Vw1)
+                        if Vw1 < 0:
+                            W1 += math.pi
+                        W2 = math.atan(Vwt2/Vw2)
+                        if Vw2 < 0:
+                            W2 += math.pi
+
+                        self.angels[i] = alfa + W1
+                        self.angels[i] = engels_norm(self.angels[i])
+                        self.angels[j] = alfa + W2
+                        self.angels[j] = engels_norm(self.angels[j])
 
     def collisions(self):
         for i in range(len(self.edges)):
             v_x = math.cos(self.angels[i]) * self.speed
             v_y = math.sin(self.angels[i]) * self.speed
             self.collisions_border(i, v_x, v_y)
-            self.collisions_edges(i)
+            self.collisions_edges()
 
     def moving(self):
 
@@ -252,6 +297,8 @@ class Game:
             self.edges[i].cords[0] += v_x
             self.edges[i].cords[1] += v_y
 
+        self.delone()
+
         self.update()
 
     def start(self):
@@ -259,6 +306,7 @@ class Game:
         self.update()
 
         while True:
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()
@@ -271,7 +319,9 @@ class Game:
                         self.update()
             if self.is_moving:
                 self.moving()
+
             self.clock.tick(self.fps)
+            self.update()
 
 
 if __name__ == '__main__':
