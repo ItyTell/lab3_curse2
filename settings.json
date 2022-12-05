@@ -5,7 +5,8 @@
     "heights": 720
   },
   "edge": {
-    "color": "red2"
+    "color": "red2",
+    "speed": "20"
           },
   "segment": {
     "voronoi_color": "blue",
