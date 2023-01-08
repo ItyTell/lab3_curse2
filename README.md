@@ -1,0 +1,1 @@
+![](../../Users/nickk/OneDrive/Робочий стіл/video/Output/pr.gif)
