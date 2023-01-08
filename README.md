@@ -1,1 +1,1 @@
-![](../../Users/nickk/OneDrive/Робочий стіл/video/Output/pr.gif)
+![](https://drive.google.com/file/d/1rRfNagE0IsnveQ5Eibh7XQ6qihLvGmzK/view?usp=share_link)
