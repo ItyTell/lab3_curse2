@@ -6,7 +6,7 @@
   },
   "edge": {
     "color": "red2",
-    "speed": "20"
+    "speed": "5"
           },
   "segment": {
     "voronoi_color": "blue",

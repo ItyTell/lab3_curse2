@@ -46,15 +46,19 @@ class Game:
         pygame.display.set_caption('Lab 3')
         self.clock = pygame.time.Clock()
         self.fps = 100
-        self.functions = [self.clear, self.edges.clear, self.clear_segments, self.add_some_points,
+        self.functions = (self.clear, self.edges.clear, self.clear_segments, self.add_some_points,
                           self.add_many_points, self.voronoi, self.delone, self.djarvis, self.grehem,
-                          self.recursive, self.movement]
+                          self.recursive, self.movement, self.voronoi_turn, self.delone_turn)
         self.is_moving = False
         self.angels = []
 
         self.distance = 5
         self.rad_edges = 10
-        self.menu_width = 150
+        self.menu_width = 220
+
+        self.voronoi_on = False
+        self.delone_on = False
+        self.lin_on = False
 
     def upload_settings(self):
         with open('settings.json') as file:
@@ -191,20 +195,20 @@ class Game:
                                center=(int(edge.cords[0]), int(edge.cords[1])), radius=self.rad_edges, width=0)
 
     def update_frames(self):
-        #pygame.draw.rect(self.screen, colors['white'], (self.settings["screen"]["width"] - self.menu_width, 3,
-        #                                               self.settings["screen"]["width"],
-        #                                                self.settings["screen"]["heights"]),  width=10)
+
+        pygame.draw.rect(self.screen, colors['white'], (self.settings["screen"]["width"] - self.menu_width, 3,
+                                                        self.menu_width - 3, self.settings["screen"]["heights"] - 6), 0)
 
         pygame.draw.rect(self.screen, colors['black'], (self.settings["screen"]["width"] - self.menu_width, 3,
                                                         self.menu_width - 3, self.settings["screen"]["heights"] - 6),
-                         width=8)
+                         width=6)
 
         pygame.draw.rect(self.screen, colors['black'], (3, 3, self.settings["screen"]["width"] - self.menu_width,
-                                                        self.settings["screen"]["heights"] - 8), width=8)
+                                                        self.settings["screen"]["heights"] - 8), width=6)
 
     def update_buttons(self):
         for i, button in enumerate(self.buttons):
-            self.screen.blit(button, (self.settings["screen"]["width"] - self.menu_width + 10, 40 * i + 6))
+            self.screen.blit(button, (self.settings["screen"]["width"] - self.menu_width * 9 / 10, 40 * i + 6))
             pygame.draw.rect(self.screen, colors['black'], (self.settings["screen"]["width"] - self.menu_width, 40 * i,
                                                             self.settings["screen"]["width"] - 6, 40), width=2)
 
@@ -261,7 +265,7 @@ class Game:
                     edge_2 = Edge([self.edges[j].cords[0] + v_x, self.edges[j].cords[1] + v_y])
 
                     if edge_1.distance(edge_2) < self.edges[i].distance(self.edges[j]):
-                        alfa = math.atan((self.edges[j][1] - self.edges[i][1])/(self.edges[j][0] - self.edges[i][0]))
+                        alfa = math.atan((self.edges[j][1] - self.edges[i][1]) / (self.edges[j][0] - self.edges[i][0]))
 
                         if self.edges[j][0] - self.edges[i][0] < 0:
                             alfa += math.pi
@@ -272,10 +276,10 @@ class Game:
 
                         Vw2, Vwt1 = self.cords_update(w1)
                         Vw1, Vwt2 = self.cords_update(w2)
-                        W1 = math.atan(Vwt1/Vw1)
+                        W1 = math.atan(Vwt1 / Vw1)
                         if Vw1 < 0:
                             W1 += math.pi
-                        W2 = math.atan(Vwt2/Vw2)
+                        W2 = math.atan(Vwt2 / Vw2)
                         if Vw2 < 0:
                             W2 += math.pi
 
@@ -299,7 +303,20 @@ class Game:
             self.edges[i].cords[0] += v_x
             self.edges[i].cords[1] += v_y
 
-        #self.voronoi()
+        if self.voronoi_on:
+            self.voronoi()
+        if self.delone_on:
+            self.delone()
+        if self.lin_on:
+            pass
+
+    def voronoi_turn(self):
+        self.voronoi_on = not self.voronoi_on
+        self.clear_segments()
+
+    def delone_turn(self):
+        self.delone_on = not self.delone_on
+        self.clear_segments()
 
     def start(self):
 
@@ -315,7 +332,10 @@ class Game:
                         if event.pos[0] < self.settings["screen"]["width"] - self.menu_width:
                             self.new_edge(event.pos)
                         else:
-                            self.functions[event.pos[1] // 40]()
+                            try:
+                                self.functions[event.pos[1] // 40]()
+                            except Exception:
+                                pass
                         self.update()
             if self.is_moving:
                 self.moving()
